@@ -1,0 +1,53 @@
+# This workflow will build a Swift project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
+
+name: Swift
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        swift: ["6.3"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v3
+      with:
+        swift-version: ${{ matrix.swift }}
+
+    - name: Install Linux system dependencies
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libwebp-dev zlib1g-dev pkg-config
+
+    - name: Install macOS system dependencies
+      if: runner.os == 'macOS'
+      run: brew install libwebp pkg-config
+
+    - name: Cache SwiftPM build
+      uses: actions/cache@v4
+      with:
+        path: |
+          .build
+        key: ${{ runner.os }}-swift-${{ matrix.swift }}-${{ hashFiles('Package.swift') }}
+        restore-keys: |
+          ${{ runner.os }}-swift-${{ matrix.swift }}-
+
+    - name: Build
+      run: swift build
+
+    - name: Test
+      run: swift test

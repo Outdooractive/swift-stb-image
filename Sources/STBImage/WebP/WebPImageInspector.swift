@@ -1,0 +1,43 @@
+import Foundation
+import CWebP
+
+/// Inspects WebP bitstreams without decoding them.
+public enum WebPImageInspector {
+
+    /// Inspects a WebP bitstream and returns its features without decoding
+    /// the image.
+    ///
+    /// - Parameter webPData: The encoded WebP data.
+    /// - Returns: The bitstream's ``WebPBitstreamFeatures``.
+    /// - Throws: ``WebPError/unexpectedError(withMessage:)`` when the data
+    ///   is not a decodable WebP bitstream.
+    public static func inspect(
+        _ webPData: Data
+    ) throws -> WebPBitstreamFeatures {
+        try webPData.withUnsafeBytes { rawPtr in
+            let span = Span<UInt8>(_unsafeBytes: rawPtr)
+            return try inspect(span)
+        }
+    }
+
+    static func inspect(
+        _ webPData: borrowing Span<UInt8>
+    ) throws -> WebPBitstreamFeatures {
+        let cFeature = UnsafeMutablePointer<CWebP.WebPBitstreamFeatures>.allocate(capacity: 1)
+        defer { cFeature.deallocate() }
+
+        let status = try webPData.withUnsafeBytes { rawPtr -> VP8StatusCode in
+            guard let basePointer = rawPtr.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+                throw WebPError.unexpectedPointerError
+            }
+            return WebPGetFeatures(basePointer, webPData.count, cFeature)
+        }
+
+        guard status == VP8_STATUS_OK else {
+            throw WebPError.unexpectedError(withMessage: "Error VP8StatusCode=\(status.rawValue)")
+        }
+
+        return WebPBitstreamFeatures(rawValue: cFeature.pointee)
+    }
+
+}

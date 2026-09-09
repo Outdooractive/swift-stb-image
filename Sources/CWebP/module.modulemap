@@ -1,0 +1,6 @@
+module CWebP [system] {
+    header "webp.h"
+    link "webp"
+
+    export *
+}
