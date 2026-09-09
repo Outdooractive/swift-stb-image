@@ -1,3 +1,13 @@
+[![][image-1]][1]
+[![][image-2]][2]
+[![](https://img.shields.io/github/license/Outdooractive/swift-stb-image)](https://github.com/Outdooractive/swift-stb-image/blob/main/LICENSE)
+[![](https://img.shields.io/github/v/release/Outdooractive/swift-stb-image?sort=semver&display_name=tag)](https://github.com/Outdooractive/swift-stb-image/releases) [![](https://img.shields.io/github/release-date/Outdooractive/swift-stb-image?display_date=published_at
+)](https://github.com/Outdooractive/swift-stb-image/releases)
+[![](https://img.shields.io/github/issues/Outdooractive/swift-stb-image
+)](https://github.com/Outdooractive/swift-stb-image/issues) [![](https://img.shields.io/github/issues-pr/Outdooractive/swift-stb-image
+)](https://github.com/Outdooractive/swift-stb-image/pulls)
+[![](https://img.shields.io/github/check-runs/Outdooractive/swift-stb-image/main)](https://github.com/Outdooractive/swift-stb-image/actions)
+
 # STBImage
 A Swift wrapper around the image reader and writer from the [stb package][2] and [libwebp][3], for reading and writing PNG, JPG and WebP images.
 
@@ -870,3 +880,9 @@ Thomas Rasch, Outdooractive
 [17]: https://github.com/nothings/stb "stb"
 [18]: https://zlib.net "zlib"
 [19]: https://github.com/ainame/Swift-WebP "Swift-WebP"
+
+[1]:	https://swiftpackageindex.com/Outdooractive/swift-stb-image
+[2]:	https://swiftpackageindex.com/Outdooractive/swift-stb-image
+
+[image-1]:	https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FOutdooractive%2Fswift-stb-image%2Fbadge%3Ftype%3Dswift-versions
+[image-2]:	https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FOutdooractive%2Fswift-stb-image%2Fbadge%3Ftype%3Dplatforms
