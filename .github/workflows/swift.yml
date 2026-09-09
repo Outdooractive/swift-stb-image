@@ -35,7 +35,7 @@ jobs:
 
     - name: Install macOS system dependencies
       if: runner.os == 'macOS'
-      run: brew install libwebp pkg-config
+      run: brew install webp pkg-config
 
     - name: Cache SwiftPM build
       uses: actions/cache@v4
