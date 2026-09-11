@@ -4,7 +4,7 @@ import Testing
 
 struct STBImageTests {
 
-    // PNG RGBA image with some transparent pixels
+    /// PNG RGBA image with some transparent pixels
     @Test
     func transparentPNGImages() throws {
         let data = try #require(ImageLoader.loadFile(named: "avk_11_1077_720.png"))
@@ -18,7 +18,8 @@ struct STBImageTests {
         #expect(image.isTransparent)
     }
 
-    // WebP RGBA image with some transparent pixels
+    #if EnableWebP
+    /// WebP RGBA image with some transparent pixels
     @Test
     func transparentWebPImages() throws {
         let data = try #require(ImageLoader.loadFile(named: "avk_11_1077_720.webp"))
@@ -36,8 +37,9 @@ struct STBImageTests {
         #expect(webP.height == 256)
         #expect(webP.hasAlpha)
     }
+    #endif
 
-    // PNG RGBA image without transparency
+    /// PNG RGBA image without transparency
     @Test
     func notTransparentPNGImages() throws {
         let data = try #require(ImageLoader.loadFile(named: "osm_topo_11_1077_720.png"))
@@ -48,11 +50,12 @@ struct STBImageTests {
         #expect(image.channels == 4)
         #expect(image.hasAlpha)
         #expect(image.data.count == 256 * 256 * STBImage.RGBA.channels)
-        #expect(!image.isTransparent)
+        #expect(image.isTransparent == false)
     }
 
-    // WebP RGBA image without transparency
-    // Note: Image is loaded as RGB
+    #if EnableWebP
+    /// WebP RGBA image without transparency
+    /// Note: Image is loaded as RGB
     @Test
     func notTransparentWebPImages() throws {
         let data = try #require(ImageLoader.loadFile(named: "osm_topo_11_1077_720.webp"))
@@ -61,17 +64,18 @@ struct STBImageTests {
         #expect(image.width == 256)
         #expect(image.height == 256)
         #expect(image.channels == 3)
-        #expect(!image.hasAlpha)
+        #expect(image.hasAlpha == false)
         #expect(image.data.count == 256 * 256 * STBImage.RGB.channels)
-        #expect(!image.isTransparent)
+        #expect(image.isTransparent == false)
 
         let webP = try WebPImageInspector.inspect(data)
         #expect(webP.width == 256)
         #expect(webP.height == 256)
-        #expect(!webP.hasAlpha)
+        #expect(webP.hasAlpha == false)
     }
+    #endif
 
-    // PNG RGB image without alpha and transparency
+    /// PNG RGB image without alpha and transparency
     @Test
     func noAlphaPNG() throws {
         let data = try #require(ImageLoader.loadFile(named: "avk_11_1078_719.png"))
@@ -80,12 +84,13 @@ struct STBImageTests {
         #expect(image.width == 256)
         #expect(image.height == 256)
         #expect(image.channels == 3)
-        #expect(!image.hasAlpha)
+        #expect(image.hasAlpha == false)
         #expect(image.data.count == 256 * 256 * STBImage.RGB.channels)
-        #expect(!image.isTransparent)
+        #expect(image.isTransparent == false)
     }
 
-    // WebP RGB image without alpha and transparency
+    #if EnableWebP
+    /// WebP RGB image without alpha and transparency
     @Test
     func noAlphaWebP() throws {
         let data = try #require(ImageLoader.loadFile(named: "avk_11_1078_719.webp"))
@@ -94,17 +99,18 @@ struct STBImageTests {
         #expect(image.width == 256)
         #expect(image.height == 256)
         #expect(image.channels == 3)
-        #expect(!image.hasAlpha)
+        #expect(image.hasAlpha == false)
         #expect(image.data.count == 256 * 256 * STBImage.RGB.channels)
-        #expect(!image.isTransparent)
+        #expect(image.isTransparent == false)
 
         let webP = try WebPImageInspector.inspect(data)
         #expect(webP.width == 256)
         #expect(webP.height == 256)
-        #expect(!webP.hasAlpha)
+        #expect(webP.hasAlpha == false)
     }
+    #endif
 
-    // Blending two PNG RGBA images
+    /// Blending two PNG RGBA images
     @Test
     func blendingAlphaPNG() throws {
         let image1 = try #require(STBImage(url: ImageLoader.url(forResourceNamed: "osm_topo_11_1077_720.png")))
@@ -117,7 +123,8 @@ struct STBImageTests {
 //        blended.write(to: URL(fileURLWithPath: "/Users/trasch/Desktop/blended.png"))
     }
 
-    // Blending two WebP images, one with, one without alpha channel
+    #if EnableWebP
+    /// Blending two WebP images, one with, one without alpha channel
     @Test
     func blendingAlphaWebP() throws {
         let image1 = try #require(STBImage(url: ImageLoader.url(forResourceNamed: "osm_topo_11_1077_720.webp")))
@@ -131,9 +138,10 @@ struct STBImageTests {
 //            .exportWebP(from: blended.imageData, quality: 100)
 //            .write(to: URL(fileURLWithPath: "/Users/trasch/Desktop/blended.webp"))
     }
+    #endif
 
-    // Blend one RGBA and one RGB image, the latter wins
-    // Result will have an alpha channel
+    /// Blend one RGBA and one RGB image, the latter wins
+    /// Result will have an alpha channel
     @Test
     func blendingNoAlphaPNG() throws {
         let image1 = try #require(STBImage(url: ImageLoader.url(forResourceNamed: "osm_topo_11_1078_719.png")))
@@ -146,8 +154,9 @@ struct STBImageTests {
 //        blended.write(to: URL(fileURLWithPath: "/Users/trasch/Desktop/blended.png"))
     }
 
-    // Blend one RGBA and one RGB image, the latter wins
-    // Result will have an alpha channel
+    #if EnableWebP
+    /// Blend one RGBA and one RGB image, the latter wins
+    /// Result will have an alpha channel
     @Test
     func blendingNoAlphaWebP() throws {
         let image1 = try #require(STBImage(url: ImageLoader.url(forResourceNamed: "osm_topo_11_1078_719.webp")))
@@ -159,9 +168,10 @@ struct STBImageTests {
 
         //        blended.write(to: URL(fileURLWithPath: "/Users/trasch/Desktop/blended.png"))
     }
+    #endif
 
-    // Draw an RGBA image in top of an RGB image, RGBA image wins
-    // ... but the result won't have an alpha channel
+    /// Draw an RGBA image in top of an RGB image, RGBA image wins
+    /// ... but the result won't have an alpha channel
     @Test
     func blendingNoAlphaSource2PNG() throws {
         var image1 = try #require(STBImage(url: ImageLoader.url(forResourceNamed: "avk_11_1078_719.png")))
@@ -174,8 +184,9 @@ struct STBImageTests {
 //        image1.write(to: URL(fileURLWithPath: "/Users/trasch/Desktop/blended.png"))
     }
 
-    // Draw an RGBA image in top of an RGB image, RGBA image wins
-    // ... but the result won't have an alpha channel
+    #if EnableWebP
+    /// Draw an RGBA image in top of an RGB image, RGBA image wins
+    /// ... but the result won't have an alpha channel
     @Test
     func blendingNoAlphaSource2WebP() throws {
         var image1 = try #require(STBImage(url: ImageLoader.url(forResourceNamed: "avk_11_1078_719.webp")))
@@ -187,6 +198,7 @@ struct STBImageTests {
 
         //        image1.write(to: URL(fileURLWithPath: "/Users/trasch/Desktop/blended.png"))
     }
+    #endif
 
     @Test
     func loadJpeg() throws {
@@ -196,9 +208,9 @@ struct STBImageTests {
         #expect(image.width == 256)
         #expect(image.height == 256)
         #expect(image.channels == 3)
-        #expect(!image.hasAlpha)
+        #expect(image.hasAlpha == false)
         #expect(image.data.count == 256 * 256 * STBImage.RGB.channels)
-        #expect(!image.isTransparent)
+        #expect(image.isTransparent == false)
     }
 
 }

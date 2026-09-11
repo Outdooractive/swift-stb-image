@@ -31,6 +31,24 @@ unsigned char* load_image_from_memory(
     return pixels;
 }
 
+unsigned short* load_image_16_from_memory(
+    const unsigned char* buffer,
+    int len,
+    int* width,
+    int* height,
+    int* channels,
+    int desired_channels
+) {
+    return stbi_load_16_from_memory(buffer, len, width, height, channels, desired_channels);
+}
+
+int is_image_16_bit(
+    const unsigned char* buffer,
+    int len
+) {
+    return stbi_is_16_bit_from_memory(buffer, len);
+}
+
 void free_image(void* pixels){
     stbi_image_free(pixels);
 }
@@ -42,11 +60,11 @@ int write_image_jpg_to_func(
     void *context,
     int width,
     int height,
-    int bpp,
+    int channels,
     const void *data,
     int quality
 ) {
-    return stbi_write_jpg_to_func(func, context, width, height, bpp, data, quality);
+    return stbi_write_jpg_to_func(func, context, width, height, channels, data, quality);
 }
 
 // PNG writing with adaptive per-row filtering and zlib deflate.
@@ -208,26 +226,58 @@ int write_image_png_to_func(
     void* context,
     int width,
     int height,
-    int bpp,
+    int channels,
+    int bit_depth,
     const void* data,
     int compression_level
 ) {
-    if (!func || !data || width <= 0 || height <= 0 || bpp < 1 || bpp > 4) {
+    if (!func || !data || width <= 0 || height <= 0 || channels < 1 || channels > 4) {
+        return 0;
+    }
+    if (bit_depth != 8 && bit_depth != 16) {
+        return 0;
+    }
+    if (bit_depth == 16 && channels != 1) {
         return 0;
     }
     if (compression_level < 0) compression_level = 0;
     if (compression_level > 9) compression_level = 9;
 
+    int bytes_per_sample = bit_depth / 8;
+    int bpp = channels * bytes_per_sample; // filter stride in bytes
     int row_bytes = width * bpp;
     int stride = row_bytes;
 
     // Color type: 0 = gray, 4 = gray+alpha, 2 = RGB, 6 = RGBA
     int color_type;
-    switch (bpp) {
+    switch (channels) {
     case 1: color_type = 0; break;
     case 2: color_type = 4; break;
     case 3: color_type = 2; break;
     default: color_type = 6; break;
+    }
+
+    // For 16-bit output the samples must be big-endian in the PNG stream.
+    // The Swift layer stores them little-endian; swap them before
+    // filtering so the per-byte predictions stay effective.
+    unsigned char* swapped = NULL;
+    if (bit_depth == 16) {
+        swapped = (unsigned char*)malloc((size_t)row_bytes * height);
+        if (!swapped) {
+            return 0;
+        }
+        for (int y = 0; y < height; y++) {
+            const unsigned char* src = (const unsigned char*)data + (size_t)y * row_bytes;
+            unsigned char* dst = swapped + (size_t)y * row_bytes;
+            for (int x = 0; x < width; x++) {
+                for (int c = 0; c < channels; c++) {
+                    size_t offset = ((size_t)x * channels + c) * 2;
+                    dst[offset] = src[offset + 1];
+                    dst[offset + 1] = src[offset];
+                }
+            }
+        }
+        data = swapped;
     }
 
     unsigned char ihdr[13];
@@ -239,7 +289,7 @@ int write_image_png_to_func(
     ihdr[5] = (unsigned char)((height >> 16) & 0xFF);
     ihdr[6] = (unsigned char)((height >> 8) & 0xFF);
     ihdr[7] = (unsigned char)(height & 0xFF);
-    ihdr[8] = 8; // bit depth
+    ihdr[8] = (unsigned char)bit_depth;
     ihdr[9] = (unsigned char)color_type;
     ihdr[10] = 0; // compression method
     ihdr[11] = 0; // filter method
@@ -345,6 +395,7 @@ cleanup:
     free(best_row);
     free(candidate_row);
     free(emit_row);
+    free(swapped);
 
     return result;
 }

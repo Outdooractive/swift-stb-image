@@ -1,0 +1,5 @@
+module CTIFF {
+    header "include/ctiff.h"
+    link "tiff"
+    export *
+}

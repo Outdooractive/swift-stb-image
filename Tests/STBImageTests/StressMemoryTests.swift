@@ -4,8 +4,8 @@ import Testing
 
 struct StressMemoryTests {
 
-    // Repeated encode/decode cycles to surface memory leaks in the
-    // WebP encoder/decoder and PNG export paths.
+    /// Repeated encode/decode cycles to surface memory leaks in the
+    /// WebP encoder/decoder and PNG export paths.
     @Test
     func repeatedCyclesDoNotGrowMemory() throws {
         let fileData = try #require(ImageLoader.loadFile(named: "osm_topo_11_1077_720.png"))
@@ -36,10 +36,15 @@ struct StressMemoryTests {
         }
 
         func loadAndExport(_ image: STBImage) {
+            #if EnableWebP
             let webp = try? image.export(.webp(quality: 85))
             let png = try? image.export(.png)
             _ = webp.flatMap { STBImage(data: $0) }
             _ = png.flatMap { STBImage(data: $0) }
+            #else
+            let png = try? image.export(.png)
+            _ = png.flatMap { STBImage(data: $0) }
+            #endif
         }
 
         // Warm up allocators

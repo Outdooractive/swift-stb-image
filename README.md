@@ -9,7 +9,7 @@
 [![](https://img.shields.io/github/check-runs/Outdooractive/swift-stb-image/main)](https://github.com/Outdooractive/swift-stb-image/actions)
 
 # STBImage
-A Swift wrapper around the image reader and writer from the [stb package][2] and [libwebp][3], for reading and writing PNG, JPG and WebP images.
+A Swift wrapper around the image reader and writer from the [stb package][2] and [libwebp][3], for reading and writing PNG, JPG and WebP images. WebP and TIFF/GeoTIFF support are available behind optional traits.
 
 ## Table of Contents
 
@@ -37,7 +37,13 @@ A Swift wrapper around the image reader and writer from the [stb package][2] and
 - [Export and conversion](#export-and-conversion)
   - [PNG compression levels](#png-compression-levels)
   - [WebP export options](#webp-export-options)
+  - [TIFF export options](#tiff-export-options)
   - [convert and converting](#convert-and-converting)
+- [TIFF](#tiff)
+  - [TIFF decoding](#tiff-decoding)
+  - [TIFF encoding](#tiff-encoding)
+  - [GeoTIFF](#geotiff)
+  - [TIFF limitations](#tiff-limitations)
 - [WebP decoding](#webp-decoding)
 - [WebP encoding](#webp-encoding)
 - [Error handling](#error-handling)
@@ -50,34 +56,38 @@ A Swift wrapper around the image reader and writer from the [stb package][2] and
 
 ## Features
 
-- Reads PNG and JPG via [stb_image][2], WebP via [libwebp][3]
-- Writes PNG and JPG via [stb_image_write][2] and WebP via [libwebp][3], including lossless WebP
-- Format auto-detection (`imageFormat`) for PNG, JPG and WebP, based on the file signature
+- Reads and writes PNG and JPG via [stb_image][2]
+- Optional `EnableWebP` trait: reads and writes WebP via [libwebp][3], including lossless WebP
+- Optional `EnableTIFF` trait: reads and writes TIFF via [libtiff][20], including GeoTIFF tags (EPSG codes, pixel scale, tiepoint)
+- Format auto-detection (`imageFormat`) for PNG, JPG, WebP and TIFF, based on the file signature (WebP/TIFF detection requires the corresponding trait)
 - RGB (3 channels) and RGBA (4 channels) images as simple `Sendable`/`Hashable` value types
 - Grayscale (1 channel) and gray+alpha (2 channels) images can be loaded with automatic channel conversion
+- 16-bit single-channel images (PNG roundtrips, TIFF with the `EnableTIFF` trait) via `STBImageData`, with `convertedBitDepth(to:)` for depth conversion
 - Fast pixel access through subscripts, plus a safe pixel iterator (`forEachPixel`/`mapPixels`) and an unsafe fast path (`unsafePixelwiseConvert`)
 - Alpha compositing ("over" blending) of equally sized images, and compositing at an arbitrary offset with clipping
 - Transformations: 90° rotations, horizontal/vertical flipping, bilinear rescaling, and region extraction
 - PNG export with adaptive per-row filtering and configurable compression level (default 6, range 0–9)
-- WebP export with quality, method, multi-threading and `exact` options
+- WebP export with quality, method, multi-threading and `exact` options (with the `EnableWebP` trait)
+- TIFF export with none/LZW/Deflate/PackBits compression and optional GeoTIFF georeferencing (with the `EnableTIFF` trait)
 - Lossless WebP roundtrips (quality 100 with `exact`)
 - In-memory only: everything works on `Data`, `[UInt8]` and `URL` convenience
-- Pure Swift wrapper without external Swift dependencies; requires the system libwebp
+- Pure Swift wrapper without external Swift dependencies; zlib is always required, libwebp/libtiff only with their traits
 
 ## Notes
 
 This package intentionally provides the smallest common denominator of the involved C libraries. Some things to be aware of:
 
-- `STBImage` supports RGB and RGBA images only. Grayscale images (1 or 2 channels in the file) are loaded as `STBImageData` with `bpp` 1 or 2, and can be converted to RGB/RGBA while loading with `desiredChannels` (see [Grayscale images](#grayscale-images)).
+- `STBImage` supports RGB and RGBA images only. Grayscale images (1 or 2 channels in the file) are loaded as `STBImageData` with `channels` 1 or 2, and can be converted to RGB/RGBA while loading with `desiredChannels` (see [Grayscale images](#grayscale-images)).
 - `STBImageCoder.load` returns `nil` for unrecognized formats and throws for recognized but corrupt/undecodable data. The failable `STBImage` initializers swallow both cases and return `nil`.
 - PNG, JPG and lossless WebP roundtrips are pixel-exact for fully opaque images. Lossless WebP still discards the RGB values of fully transparent pixels unless the `exact` option is enabled (see [WebP export options](#webp-export-options)).
 - Alpha values are straight (not premultiplied). Bilinear rescaling interpolates channels independently, which can produce halos around hard transparency edges.
 - JPG export ignores the alpha channel (a limitation of stb_image_write), and produces baseline JPEG only.
 - WebP animations can be inspected (`hasAnimation`) but not decoded — only the first frame of an animated WebP would be decoded, which is why animated WebP input is rejected.
+- WebP and TIFF/GeoTIFF support are optional and compiled in only when the corresponding `EnableWebP`/`EnableTIFF` trait is enabled (see [Enabling WebP and TIFF support](#enabling-webp-and-tiff-support)). Without a trait, data in that format is reported as `.unknown` by `imageFormat` and the format's APIs do not exist.
 
 ## Requirements
 
-This package requires Swift 6.3 or higher, and compiles on macOS (\>= macOS 15) and Linux. Two system libraries are required: libwebp (WebP support, `brew install webp` on macOS, `apt install libwebp-dev` on Debian/Ubuntu, resolved through `pkg-config`) and zlib (PNG export; ships with macOS, install `zlib1g-dev` on Debian/Ubuntu).
+This package requires Swift 6.3 or higher, and compiles on macOS (\>= macOS 15) and Linux. zlib is always required (PNG export; ships with macOS, install `zlib1g-dev` on Debian/Ubuntu). The optional `EnableWebP` trait requires libwebp (`brew install webp` on macOS, `apt install libwebp-dev` on Debian/Ubuntu, resolved through `pkg-config`), the optional `EnableTIFF` trait requires libtiff (`brew install libtiff` on macOS, `apt install libtiff-dev` on Debian/Ubuntu).
 
 ## Installation with Swift Package Manager
 
@@ -91,6 +101,12 @@ targets: [
     ]),
 ]
 ```
+
+### Enabling WebP and TIFF support
+
+WebP support (libwebp) and TIFF/GeoTIFF support (libtiff) are gated behind the `EnableWebP`/`EnableTIFF` traits (see the [Swift traits proposal][21]). They are opt-in so that deployments without the libraries available are unaffected. Enable them on the command line with `swift build --enable-trait EnableWebP --enable-trait EnableTIFF` (or `--enable-all-traits`), or in Xcode/packaging pipelines via the corresponding build settings.
+
+Without a trait, that format's API surface does not exist at all: `STBImageFormat` has no `.webp`/`.tiff` case, `STBExportFormat` no `.webp`/`.tiff`, and `STBImageCoder.imageFormat` reports the data as `.unknown`. Nothing touches libwebp or libtiff in those configurations.
 
 ## Quick start
 
@@ -126,6 +142,8 @@ let png = try image.export(.png)
 let jpg = try image.export(.jpg(quality: 85))
 let webp = try image.export(.webp(quality: 85))
 let lossless = try image.export(.webp(quality: 100, exact: true))
+// TIFF, only with the EnableTIFF trait
+let tiff = try image.export(.tiff())
 ```
 
 See the [tests for more examples][4].
@@ -159,7 +177,7 @@ public init(width: Int, height: Int, value: UInt8)
 /// the image has three (RGB) channels, otherwise four (RGBA).
 public init(width: Int, height: Int, red: UInt8, green: UInt8, blue: UInt8, alpha: UInt8? = nil)
 
-/// Convert an `STBImageData` (requires `bpp` 3 or 4).
+/// Convert an `STBImageData` (requires 8-bit samples with 3 or 4 channels).
 public init?(imageData: STBImageData)
 
 /// Load from encoded PNG/JPG/WebP data.
@@ -196,16 +214,42 @@ print(grayAsRGB.channels) // 3
 public let width: Int
 /// The image's height in pixels.
 public let height: Int
-/// Bytes per pixel: 1 (gray), 2 (gray+alpha), 3 (RGB) or 4 (RGBA).
-public let bpp: Int
-/// The raw pixel data.
+/// Samples per pixel: 1 (gray), 2 (gray+alpha), 3 (RGB) or 4 (RGBA).
+public let channels: Int
+/// The sample bit depth: `.eight` or `.sixteen`.
+public let bitDepth: STBImageBitDepth
+/// The raw pixel data, row by row, top to bottom, interleaved per pixel.
+/// 16-bit samples are stored as little-endian byte pairs.
 public let data: [UInt8]
+/// Bytes per pixel: `channels` for 8-bit images, `channels * 2` for 16-bit.
+public var bytesPerPixel: Int { get }
 ```
 
-`STBImageCoder.load` returns an `STBImageData`, which can be exported directly, or converted into an `STBImage` when `bpp` is 3 or 4:
+16-bit single-channel images (e.g. elevation/DEM rasters) are supported alongside the usual 8-bit ones. Use `convertedBitDepth(to:)` to convert between the depths (16→8 uses `(value + 128) / 257` rounding, 8→16 scales by 257), and `convertedChannels(to:)` for channel conversion of 8-bit images:
+```swift
+let gray8 = gray16.convertedBitDepth(to: .eight)
+```
+
+16-bit samples can be accessed directly through the little-endian-decoded accessors — by pixel coordinates, by flat index, and as a decoded `UInt16` array:
+```swift
+// Read/write the sample at a pixel position
+let value: UInt16 = gray16[x, y]
+gray16[x, y] = 0xBEEF
+
+// Or through the flat sample index (0 ..< width * height)
+gray16[data16: 0] = 0x1234
+
+// Or as a decoded array
+var samples = gray16.samples16
+samples[0] = 42_000
+gray16.samples16 = samples
+```
+All accessors are read/write, require a 16-bit image, and trap on out-of-range access. The setters write little-endian byte pairs into the buffer.
+
+`STBImageCoder.load` returns an `STBImageData`, which can be exported directly, or converted into an `STBImage` when it is 8-bit with 3 or 4 channels:
 ```swift
 let imageData = try STBImageCoder.load(from: data)
-let image = imageData.flatMap(STBImage.init(imageData:)) // nil for gray images
+let image = imageData.flatMap(STBImage.init(imageData:)) // nil for gray/16-bit images
 ```
 
 ## STBImageCoder
@@ -261,14 +305,14 @@ let webpData = STBImageCoder.convert(pngData, to: .webp(quality: 85))
 
 ## Grayscale images
 
-stb_image reports grayscale (1 channel) and gray+alpha (2 channels) images with their original `bpp`. Such images can not be turned into an `STBImage` directly, but `desiredChannels` converts them while loading — and because `desiredChannels` also applies to RGB(A) sources, it can be used to drop or add an alpha channel at load time as well:
+stb_image reports grayscale (1 channel) and gray+alpha (2 channels) images with their original channel count. Such images can not be turned into an `STBImage` directly, but `desiredChannels` converts them while loading — and because `desiredChannels` also applies to RGB(A) sources, it can be used to drop or add an alpha channel at load time as well:
 
 ```swift
 let gray = try #require(STBImageCoder.load(from: grayPngData))
-print(gray.bpp) // 1
+print(gray.channels) // 1
 
 let asRGB = try STBImageCoder.load(from: grayPngData, desiredChannels: 3)!
-print(asRGB.bpp) // 3, gray values are replicated into all channels
+print(asRGB.channels) // 3, gray values are replicated into all channels
 
 let asRGBA = try STBImageCoder.load(from: grayPngData, desiredChannels: 4)!
 // gray values replicated, alpha = 255
@@ -599,6 +643,23 @@ JPG export takes a quality between 1 and 100 (values outside the range are clamp
 let jpg = try image.export(.jpg(quality: 85))
 ```
 
+## TIFF export options
+[Only available with the `EnableTIFF` trait](#enabling-tiff-support)
+
+`STBExportFormat.tiff` carries a `TIFFExportOptions` value, constructed with defaults:
+```swift
+public struct TIFFExportOptions: Sendable, Hashable {
+    /// The compression method for the output file. Defaults to `.deflate`.
+    public var compression: TIFFCompression
+
+    /// Optional georeferencing information (GeoTIFF): EPSG code, raster
+    /// type, pixel scale and tiepoint. When set, the output is a GeoTIFF.
+    public var geoTIFFInfo: GeoTIFFInfo?
+}
+```
+
+See [TIFF](#tiff) for the supported compressions, the GeoTIFF model and the limitations.
+
 ## convert and converting
 [Implementation][7]
 
@@ -613,6 +674,116 @@ let webp = STBImageCoder.convert(jpgData, to: .webp(quality: 85))
 // The throwing variant
 let webp = try STBImageCoder.converting(jpgData, to: .webp(quality: 85))
 ```
+
+# TIFF
+[Only available with the `EnableTIFF` trait](#enabling-tiff-support)
+
+[Implementation][22] / [Test cases][23]
+
+TIFF support is built on the system libtiff and follows the same model as the WebP support: a dedicated decoder (`TIFFDecoder`) with explicit format control, an inspector (`TIFFImageInspector`) and an encoder (`TIFFEncoder`). All of them work on the shared `STBImageData` representation: 8-bit images with 1 (gray), 2 (gray+alpha), 3 (RGB) or 4 (RGBA) channels, and single-channel 16-bit images (e.g. elevation/DEM rasters).
+
+GeoTIFF files are recognized through their geospatial tags: the EPSG code of the coordinate reference system (`GeoKeyDirectoryTag`), the pixel scale (`ModelPixelScaleTag`) and the tiepoint (`ModelTiepointTag`) — the geotransform information that locates the raster on the earth. The package models these tags as plain data (`GeoTIFFInfo`); interpreting EPSG codes and reprojecting coordinates is left to consumers like [GISTools][16].
+
+## TIFF decoding
+
+```swift
+public enum TIFFDecoder {
+
+    /// Decode TIFF data.
+    ///
+    /// - Returns: `nil` when the data is not a recognized TIFF.
+    /// - Throws: `TIFFError` when the data is recognized but can not be
+    ///   decoded, or contains an unsupported variant.
+    ///
+    /// - Parameter desiredChannels: Number of channels to convert 8-bit
+    ///   images to, where 0 keeps the original channel count. 16-bit
+    ///   images are unaffected.
+    public static func load(
+        from data: Data,
+        desiredChannels: Int = 0) throws -> STBImageData?
+
+}
+```
+
+Both strip- and tile-based TIFFs are read (which covers cloud-optimized GeoTIFFs). Classic and BigTIFF signatures in both byte orders are detected. Files with associated (premultiplied) alpha are converted to straight alpha while decoding.
+
+Example:
+```swift
+let image = try TIFFDecoder.load(from: tiffData)
+print(image!.description) // e.g. STBImageData(width: 256, height: 256, channels: 4, bitDepth: .eight)
+
+// 16-bit elevation raster
+let dem = try TIFFDecoder.load(from: demData)
+print(dem!.bitDepth) // .sixteen
+```
+
+## TIFF encoding
+
+```swift
+public enum TIFFEncoder {
+
+    /// Encode an `STBImageData` into TIFF data. Always produces strip-based
+    /// files.
+    public static func export(
+        image: STBImageData,
+        options: TIFFExportOptions = TIFFExportOptions()) throws -> Data
+
+}
+```
+
+Supported compressions are `none`, `lzw`, `deflate` and `packBits`. 8-bit gray/gray+alpha/RGB/RGBA and 16-bit single-channel images can be written. With `TIFFExportOptions.geoTIFFInfo` set, the output carries GeoTIFF tags.
+
+## GeoTIFF
+
+The `GeoTIFFInfo` value describes the georeferencing:
+```swift
+public struct GeoTIFFInfo: Sendable, Hashable {
+    /// The EPSG code of the projected CRS (`ProjectedCSTypeGeoKey`), when
+    /// present. For geographic-only files (e.g. plain EPSG:4326 rasters),
+    /// the geographic CRS code is reported here as well.
+    public let epsgCode: Int?
+
+    /// The EPSG code of the geographic CRS (`GeodeticCRSGeoKey`), when
+    /// present.
+    public let geographicEPSGCode: Int?
+
+    /// The raster type: `.pixelIsArea` (pixel fills a grid cell, the
+    /// GeoTIFF default) or `.pixelIsPoint` (pixel is a sample point).
+    public let rasterType: RasterType?
+
+    /// The pixel scale (`ModelPixelScaleTag`): resolution in CRS units
+    /// per pixel along X and Y, as stored in the tag.
+    public let pixelScale: GeoTIFFScale?
+
+    /// The tiepoint (`ModelTiepointTag`): the world coordinates of the
+    /// raster point (usually the raster origin).
+    public let tiepoint: GeoTIFFTiepoint?
+}
+```
+
+For a north-up image with `epsgCode: 3857`, a Web Mercator bounding box and a 256-pixel-wide image, the pixel scale is `(east - west) / width` in meters and the tiepoint's world coordinates are the upper left corner `(west, north)`:
+```swift
+let geo = GeoTIFFInfo(
+    epsgCode: 3857,
+    rasterType: .pixelIsArea,
+    pixelScale: GeoTIFFScale(x: (east - west) / 256, y: (north - south) / 256),
+    tiepoint: GeoTIFFTiepoint(originX: west, originY: north))
+
+let data = try TIFFEncoder.export(
+    image: image,
+    options: TIFFExportOptions(geoTIFFInfo: geo))
+```
+
+The georeferencing is available on inspection and decoding through `TIFFImageInfo.geoTIFFInfo`.
+
+## TIFF limitations
+
+The supported surface is deliberately small. Unsupported variants throw `TIFFError.unsupported` instead of mis-decoding:
+
+- **Decoding** — paletted images, CMYK and YCbCr photometric interpretations, JPEG-in-TIFF compression, planar (band-interleaved) storage, floating-point and signed-integer sample formats, 32-bit samples, 16-bit RGB(A) images, more than 4 channels, multiple extra samples, 1-bit bilevel images, and all pages of multi-page files beyond the first one (overviews/pyramids included) are rejected.
+- **Encoding** — strip-based files only: no tiled output, no COG layout, no BigTIFF, no multi-page, no horizontal predictor option.
+- **GeoTIFF** — only EPSG GeoKeys (`ProjectedCRSGeoKey`/`GeodeticCRSGeoKey`), the raster type key and the scale/tiepoint affine mapping are modeled. No WKT CRS strings, no GeoAsciiParams/citation metadata, no non-north-up geotransforms on write, no vertical datums, and no CRS semantics or reprojection (consumers interpret EPSG codes).
+- **General** — BigTIFF is read-only; `desiredChannels` does not apply to 16-bit images (they are single-channel only); 16-bit PNG roundtrips are supported through `STBImageCoder`/`STBImageData`, 16-bit TIFF through the TIFF layer.
 
 # WebP decoding
 [Implementation][11] / [WebP test cases][12]
@@ -847,6 +1018,7 @@ This package is MIT licensed and builds on third-party components with compatibl
 | [stb_image][17] / [stb_image_write][17] | Public domain or MIT (dual) | Vendored in `Sources/CSTBImage`, PNG/JPG reading and JPG writing |
 | [zlib][18] | zlib license | External system dependency, not bundled — PNG export (deflate + CRC32) |
 | [libwebp][3] | BSD-3-Clause | External system dependency (`pkg-config`), not bundled — WebP decoding and encoding |
+| [libtiff][20] | libtiff license (BSD-style) | External system dependency (`pkg-config`), not bundled — TIFF/GeoTIFF decoding and encoding (behind the `EnableTIFF` trait) |
 | [Swift-WebP][19] | MIT | The WebP Swift wrapper was initially ported from this project |
 
 # Related packages
@@ -880,6 +1052,10 @@ Thomas Rasch, Outdooractive
 [17]: https://github.com/nothings/stb "stb"
 [18]: https://zlib.net "zlib"
 [19]: https://github.com/ainame/Swift-WebP "Swift-WebP"
+[20]: https://libtiff.gitlab.io/libtiff/ "libtiff"
+[21]: https://github.com/swiftlang/swift-evolution/blob/main/proposals/0475-package-traits.md "Swift traits"
+[22]: https://github.com/Outdooractive/swift-stb-image/tree/main/Sources/STBImage/TIFF "TIFF implementation"
+[23]: https://github.com/Outdooractive/swift-stb-image/tree/main/Tests/STBImageTests/TIFF "TIFF test cases"
 
 [1]:	https://swiftpackageindex.com/Outdooractive/swift-stb-image
 [2]:	https://swiftpackageindex.com/Outdooractive/swift-stb-image

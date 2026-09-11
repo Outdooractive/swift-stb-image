@@ -1,0 +1,5 @@
+module CLibTIFF [system] {
+    umbrella header "shim.h"
+    link "tiff"
+    export *
+}

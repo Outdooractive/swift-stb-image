@@ -1,5 +1,6 @@
-import Foundation
+#if EnableWebP
 import CWebP
+import Foundation
 
 /// Mapping from libwebp.WebPConfig.
 public struct WebPEncoderConfig: InternalRawRepresentable, Sendable {
@@ -147,6 +148,7 @@ public struct WebPEncoderConfig: InternalRawRepresentable, Sendable {
         guard WebPConfigLosslessPreset(&config, Int32(level)) != 0 else {
             throw WebPError.invalidWebPConfig
         }
+
         return WebPEncoderConfig(rawValue: config)
     }
 
@@ -157,38 +159,39 @@ public struct WebPEncoderConfig: InternalRawRepresentable, Sendable {
     }
 
     init(rawValue: CWebP.WebPConfig) {
-        lossless = Int(rawValue.lossless)
-        quality = rawValue.quality
-        method = Int(rawValue.method)
+        self.lossless = Int(rawValue.lossless)
+        self.quality = rawValue.quality
+        self.method = Int(rawValue.method)
         guard let imageHint = WebPImageHint(rawValue: rawValue.image_hint.rawValue) else {
             preconditionFailure("Unexpected WebP image hint value: \(rawValue.image_hint.rawValue)")
         }
+
         self.imageHint = imageHint
-        targetSize = Int(rawValue.target_size)
-        targetPSNR = Float(rawValue.target_PSNR)
-        segments = Int(rawValue.segments)
-        snsStrength = Int(rawValue.sns_strength)
-        filterStrength = Int(rawValue.filter_strength)
-        filterSharpness = Int(rawValue.filter_sharpness)
-        filterType = Int(rawValue.filter_type)
-        autofilter = Int(rawValue.autofilter)
-        alphaCompression = Int(rawValue.alpha_compression)
-        alphaFiltering = Int(rawValue.alpha_filtering)
-        alphaQuality = Int(rawValue.alpha_quality)
-        pass = Int(rawValue.pass)
-        showCompressed = rawValue.show_compressed != 0 ? true : false
-        preprocessing = Int(rawValue.preprocessing)
-        partitions = Int(rawValue.partitions)
-        partitionLimit = Int(rawValue.partition_limit)
-        emulateJpegSize = rawValue.emulate_jpeg_size != 0 ? true : false
-        threadLevel = Int(rawValue.thread_level)
-        lowMemory = rawValue.low_memory != 0 ? true : false
-        nearLossless = Int(rawValue.near_lossless)
-        exact = Int(rawValue.exact)
-        useDeltaPalette = rawValue.use_delta_palette != 0 ? true : false
-        useSharpYUV = rawValue.use_sharp_yuv != 0 ? true : false
-        qmin = Int(rawValue.qmin)
-        qmax = Int(rawValue.qmax)
+        self.targetSize = Int(rawValue.target_size)
+        self.targetPSNR = Float(rawValue.target_PSNR)
+        self.segments = Int(rawValue.segments)
+        self.snsStrength = Int(rawValue.sns_strength)
+        self.filterStrength = Int(rawValue.filter_strength)
+        self.filterSharpness = Int(rawValue.filter_sharpness)
+        self.filterType = Int(rawValue.filter_type)
+        self.autofilter = Int(rawValue.autofilter)
+        self.alphaCompression = Int(rawValue.alpha_compression)
+        self.alphaFiltering = Int(rawValue.alpha_filtering)
+        self.alphaQuality = Int(rawValue.alpha_quality)
+        self.pass = Int(rawValue.pass)
+        self.showCompressed = rawValue.show_compressed != 0 ? true : false
+        self.preprocessing = Int(rawValue.preprocessing)
+        self.partitions = Int(rawValue.partitions)
+        self.partitionLimit = Int(rawValue.partition_limit)
+        self.emulateJpegSize = rawValue.emulate_jpeg_size != 0 ? true : false
+        self.threadLevel = Int(rawValue.thread_level)
+        self.lowMemory = rawValue.low_memory != 0 ? true : false
+        self.nearLossless = Int(rawValue.near_lossless)
+        self.exact = Int(rawValue.exact)
+        self.useDeltaPalette = rawValue.use_delta_palette != 0 ? true : false
+        self.useSharpYUV = rawValue.use_sharp_yuv != 0 ? true : false
+        self.qmin = Int(rawValue.qmin)
+        self.qmax = Int(rawValue.qmax)
     }
 
     var rawValue: CWebP.WebPConfig {
@@ -227,8 +230,7 @@ public struct WebPEncoderConfig: InternalRawRepresentable, Sendable {
             use_delta_palette: Int32(use_delta_palette),
             use_sharp_yuv: Int32(use_sharp_yuv),
             qmin: Int32(qmin),
-            qmax: Int32(qmax)
-        )
+            qmax: Int32(qmax))
     }
 
     /// libwebp's encoding presets.
@@ -267,6 +269,8 @@ public struct WebPEncoderConfig: InternalRawRepresentable, Sendable {
 
             return config
         }
+
     }
 
 }
+#endif

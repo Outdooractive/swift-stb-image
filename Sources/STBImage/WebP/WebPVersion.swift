@@ -1,5 +1,6 @@
-import Foundation
+#if EnableWebP
 import CWebP
+import Foundation
 
 /// The linked libwebp version, i.e. `WebPDecoder.libwebpVersion`.
 public struct WebPVersion: Equatable, CustomStringConvertible, Sendable {
@@ -15,9 +16,9 @@ public struct WebPVersion: Equatable, CustomStringConvertible, Sendable {
 
     init(rawValue: Int32) {
         let value = UInt32(bitPattern: rawValue)
-        major = Int((value >> 16) & 0xFF)
-        minor = Int((value >> 8) & 0xFF)
-        patch = Int(value & 0xFF)
+        self.major = Int((value >> 16) & 0xFF)
+        self.minor = Int((value >> 8) & 0xFF)
+        self.patch = Int(value & 0xFF)
     }
 
     /// The version as "major.minor.patch", i.e. "1.3.2".
@@ -27,20 +28,21 @@ public struct WebPVersion: Equatable, CustomStringConvertible, Sendable {
 
 }
 
-public extension WebPEncoder {
+extension WebPEncoder {
 
     /// The libwebp version that the encoder was linked against.
-    static var libwebpVersion: WebPVersion {
+    public static var libwebpVersion: WebPVersion {
         WebPVersion(rawValue: WebPGetEncoderVersion())
     }
 
 }
 
-public extension WebPDecoder {
+extension WebPDecoder {
 
     /// The libwebp version that the decoder was linked against.
-    static var libwebpVersion: WebPVersion {
+    public static var libwebpVersion: WebPVersion {
         WebPVersion(rawValue: WebPGetDecoderVersion())
     }
 
 }
+#endif

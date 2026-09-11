@@ -1,3 +1,4 @@
+#if EnableWebP
 import Foundation
 
 protocol InternalRawRepresentable {
@@ -9,3 +10,4 @@ protocol InternalRawRepresentable {
     var rawValue: Self.RawValue { get }
 
 }
+#endif

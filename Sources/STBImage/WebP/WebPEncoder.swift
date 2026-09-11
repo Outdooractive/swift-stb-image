@@ -1,5 +1,6 @@
-import Foundation
+#if EnableWebP
 import CWebP
+import Foundation
 
 /// A customized error that describes the pattern of error causes.
 /// However, the error is unlikely to happen normally but it's still better to handle with throw-catch than fatal error.
@@ -150,6 +151,7 @@ public struct WebPEncoder: Sendable {
         guard let baseAddress = data.baseAddress else {
             throw WebPError.unexpectedPointerError
         }
+
         let importer = importer(for: format)
         return try encode(
             UnsafeMutablePointer(mutating: baseAddress),
@@ -159,8 +161,7 @@ public struct WebPEncoder: Sendable {
             originHeight: originHeight,
             stride: stride,
             resizeWidth: resizeWidth,
-            resizeHeight: resizeHeight
-        )
+            resizeHeight: resizeHeight)
     }
 
     private func importer(for format: WebPEncodePixelFormat) -> WebPPictureImporter {
@@ -169,22 +170,27 @@ public struct WebPEncoder: Sendable {
             { picturePtr, data, stride in
                 WebPPictureImportRGB(picturePtr, data, stride)
             }
+
         case .rgba:
             { picturePtr, data, stride in
                 WebPPictureImportRGBA(picturePtr, data, stride)
             }
+
         case .rgbx:
             { picturePtr, data, stride in
                 WebPPictureImportRGBX(picturePtr, data, stride)
             }
+
         case .bgr:
             { picturePtr, data, stride in
                 WebPPictureImportBGR(picturePtr, data, stride)
             }
+
         case .bgra:
             { picturePtr, data, stride in
                 WebPPictureImportBGRA(picturePtr, data, stride)
             }
+
         case .bgrx:
             { picturePtr, data, stride in
                 WebPPictureImportBGRX(picturePtr, data, stride)
@@ -236,14 +242,14 @@ public struct WebPEncoder: Sendable {
         // the returned `Data`. Clear it on every error path to prevent leaks.
         var ownsBuffer = false
         defer {
-            if !ownsBuffer {
+            if ownsBuffer == false {
                 WebPMemoryWriterClear(&buffer)
             }
         }
         let writeWebP: @convention(c) (UnsafePointer<UInt8>?, Int, UnsafePointer<WebPPicture>?)
-        -> Int32 = { data, size, picture -> Int32 in
-            return WebPMemoryWrite(data, size, picture)
-        }
+            -> Int32 = { data, size, picture -> Int32 in
+                WebPMemoryWrite(data, size, picture)
+            }
         picture.writer = writeWebP
 
         try withUnsafeMutableBytes(of: &buffer) { ptr in
@@ -258,9 +264,11 @@ public struct WebPEncoder: Sendable {
         guard let pointer = buffer.mem else {
             return Data()
         }
+
         return Data(bytesNoCopy: pointer, count: buffer.size, deallocator: .custom { rawPointer, _ in
             WebPFree(rawPointer)
         })
     }
 
 }
+#endif

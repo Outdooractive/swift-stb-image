@@ -1,5 +1,6 @@
-import Foundation
+#if EnableWebP
 import CWebP
+import Foundation
 
 /// There's no definition of WebPDecodingError in libwebp.
 /// We map VP8StatusCode enum as WebPDecodingError instead.
@@ -67,31 +68,31 @@ public enum WebPDecodePixelFormat: Sendable {
     var colorspace: ColorspaceMode {
         switch self {
         case .rgb:
-                .RGB
+            .RGB
         case .rgba:
-                .RGBA
+            .RGBA
         case .bgr:
-                .BGR
+            .BGR
         case .bgra:
-                .BGRA
+            .BGRA
         case .argb:
-                .ARGB
+            .ARGB
         case .rgba4444:
-                .RGBA4444
+            .RGBA4444
         case .rgb565:
-                .RGB565
+            .RGB565
         case .rgbA:
-                .rgbA
+            .rgbA
         case .bgrA:
-                .bgrA
+            .bgrA
         case .Argb:
-                .Argb
+            .Argb
         case .rgbA4444:
-                .rgbA4444
+            .rgbA4444
         case .yuv:
-                .YUV
+            .YUV
         case .yuva:
-                .YUVA
+            .YUVA
         }
     }
 
@@ -121,7 +122,7 @@ public struct WebPDecoder: Sendable {
             for: webPData,
             options: options,
             format: format)
-        .byteCount
+            .byteCount
     }
 
     private func decodeIntoBuffer(
@@ -168,8 +169,7 @@ public struct WebPDecoder: Sendable {
         let rgbaBuffer = WebPRGBABuffer(
             rgba: base,
             stride: Int32(layout.stride),
-            size: layout.byteCount
-        )
+            size: layout.byteCount)
         config.output.u = .RGBA(rgbaBuffer)
         try webPData.withUnsafeBytes { rawPtr in
             let span = Span<UInt8>(_unsafeBytes: rawPtr)
@@ -219,16 +219,17 @@ public struct WebPDecoder: Sendable {
         guard format.colorspace.isRGBMode else {
             throw WebPError.unsupportedDecodeFormat
         }
+
         let layout = try requiredOutputLayout(
             for: webPData,
             options: options,
-            format: format
-        )
+            format: format)
         var output = Data(count: layout.byteCount)
         let written = try output.withUnsafeMutableBytes { rawPtr -> Int in
             guard let baseAddress = rawPtr.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
                 throw WebPError.outputBufferTooSmall(required: layout.byteCount, actual: 0)
             }
+
             let buffer = UnsafeMutableBufferPointer(start: baseAddress, count: rawPtr.count)
             return try decodeIntoBuffer(
                 webPData,
@@ -318,15 +319,16 @@ public struct WebPDecoder: Sendable {
             }
         }
 
-        let format: WebPDecodePixelFormat = if let format {
-            format
-        }
-        else if feature.hasAlpha {
-            .rgba
-        }
-        else {
-            .rgb
-        }
+        let format: WebPDecodePixelFormat =
+            if let format {
+                format
+            }
+            else if feature.hasAlpha {
+                .rgba
+            }
+            else {
+                .rgb
+            }
 
         let bytesPerPixel = format.bytesPerPixel
         let stride = width * bytesPerPixel
@@ -336,8 +338,7 @@ public struct WebPDecoder: Sendable {
             height: height,
             bytesPerPixel: bytesPerPixel,
             stride: stride,
-            byteCount: byteCount
-        )
+            byteCount: byteCount)
     }
 
 }
@@ -362,13 +363,13 @@ public struct OutputLayout {
 
 }
 
-private extension WebPDecodePixelFormat {
+extension WebPDecodePixelFormat {
 
-    var bytesPerPixel: Int {
+    fileprivate var bytesPerPixel: Int {
         switch self {
-        case .rgb, .bgr:
+        case .bgr, .rgb:
             3
-        case .rgba4444, .rgb565, .rgbA4444:
+        case .rgb565, .rgba4444, .rgbA4444:
             2
         default:
             4
@@ -376,3 +377,4 @@ private extension WebPDecodePixelFormat {
     }
 
 }
+#endif
