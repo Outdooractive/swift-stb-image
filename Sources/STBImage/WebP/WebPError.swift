@@ -1,3 +1,4 @@
+#if EnableWebP
 import Foundation
 
 /// Errors that can occur during WebP processing.
@@ -20,3 +21,4 @@ public enum WebPError: Error, Sendable {
     case outputBufferTooSmall(required: Int, actual: Int)
 
 }
+#endif

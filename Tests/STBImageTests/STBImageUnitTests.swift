@@ -20,8 +20,8 @@ struct STBImageUnitTests {
 
     @Test
     func initWithImageData() {
-        let rgb = STBImageData(width: 2, height: 2, bpp: 3, data: [UInt8](repeating: 1, count: 12))
-        let rgba = STBImageData(width: 2, height: 2, bpp: 4, data: [UInt8](repeating: 1, count: 16))
+        let rgb = STBImageData(width: 2, height: 2, channels: 3, data: [UInt8](repeating: 1, count: 12))
+        let rgba = STBImageData(width: 2, height: 2, channels: 4, data: [UInt8](repeating: 1, count: 16))
 
         #expect(STBImage(imageData: rgb) != nil)
         #expect(STBImage(imageData: rgba) != nil)
@@ -31,8 +31,8 @@ struct STBImageUnitTests {
 
     @Test
     func initWithInvalidImageData() {
-        let gray = STBImageData(width: 2, height: 2, bpp: 1, data: [UInt8](repeating: 1, count: 4))
-        let grayAlpha = STBImageData(width: 2, height: 2, bpp: 2, data: [UInt8](repeating: 1, count: 8))
+        let gray = STBImageData(width: 2, height: 2, channels: 1, data: [UInt8](repeating: 1, count: 4))
+        let grayAlpha = STBImageData(width: 2, height: 2, channels: 2, data: [UInt8](repeating: 1, count: 8))
 
         #expect(STBImage(imageData: gray) == nil)
         #expect(STBImage(imageData: grayAlpha) == nil)
@@ -96,7 +96,7 @@ struct STBImageUnitTests {
     @Test
     func isTransparent() {
         var image = STBImage(width: 2, height: 2, value: 255)
-        #expect(!image.isTransparent)
+        #expect(image.isTransparent == false)
 
         image[1, 1, .alpha] = 128
         #expect(image.isTransparent)
@@ -109,7 +109,7 @@ struct STBImageUnitTests {
             height: 2,
             channels: 3,
             data: [UInt8](repeating: 255, count: 12))
-        #expect(!opaque.isTransparent)
+        #expect(opaque.isTransparent == false)
     }
 
     @Test
@@ -133,7 +133,7 @@ struct STBImageUnitTests {
         image.dropAlpha()
 
         #expect(image.channels == 3)
-        #expect(!image.hasAlpha)
+        #expect(image.hasAlpha == false)
         #expect(image.data.count == 2 * 2 * 3)
         #expect(image.data == [1, 2, 3, 0, 0, 0, 0, 0, 0, 4, 5, 6])
     }
@@ -143,7 +143,8 @@ struct STBImageUnitTests {
         var image = STBImage(width: 64, height: 64, value: 12)
         image[63, 63, .alpha] = 1
 
-        let expected = image.data.enumerated()
+        let expected = image.data
+            .enumerated()
             .filter { $0.offset % 4 != 3 }
             .map(\.element)
 
@@ -244,7 +245,7 @@ struct STBImageUnitTests {
 
     // MARK: - Blending
 
-    // A fully transparent overlay leaves the base image unchanged
+    /// A fully transparent overlay leaves the base image unchanged
     @Test
     func blendWithTransparentOverlay() {
         var base = STBImage(width: 2, height: 2, value: 50)
@@ -258,7 +259,7 @@ struct STBImageUnitTests {
         #expect(base == STBImage(width: 2, height: 2, value: 50))
     }
 
-    // A fully opaque overlay replaces the base image
+    /// A fully opaque overlay replaces the base image
     @Test
     func blendWithOpaqueOverlay() {
         var base = STBImage(width: 2, height: 2, value: 50)
@@ -272,13 +273,13 @@ struct STBImageUnitTests {
         #expect(base == overlay)
     }
 
-    // Blend math for a known 50% alpha overlay
-    // base = (100, 100, 100, 255), overlay = (200, 0, 0, 128)
-    // factor = (255 - 128) * 255 = 32385
-    // blendAlpha255 = 255 * 128 + 32385 = 65025
-    // red = (100 * 32385 + 255 * 128 * 200) / 65025 = 150
-    // green = blue = (100 * 32385 + 255 * 128 * 0) / 65025 = 49
-    // alpha = 65025 / 255 = 255
+    /// Blend math for a known 50% alpha overlay
+    /// base = (100, 100, 100, 255), overlay = (200, 0, 0, 128)
+    /// factor = (255 - 128) * 255 = 32385
+    /// blendAlpha255 = 255 * 128 + 32385 = 65025
+    /// red = (100 * 32385 + 255 * 128 * 200) / 65025 = 150
+    /// green = blue = (100 * 32385 + 255 * 128 * 0) / 65025 = 49
+    /// alpha = 65025 / 255 = 255
     @Test
     func blendWithHalfTransparentOverlay() {
         var base = STBImage(width: 1, height: 1, value: 100)
@@ -295,7 +296,7 @@ struct STBImageUnitTests {
         #expect(base[0, 0, .alpha] == 255)
     }
 
-    // An RGB overlay on an RGBA base wins completely
+    /// An RGB overlay on an RGBA base wins completely
     @Test
     func blendWithRGBOverlayOnRGBABase() {
         var base = STBImage(width: 1, height: 1, value: 50)
@@ -309,7 +310,7 @@ struct STBImageUnitTests {
         #expect(base[0, 0, .alpha] == 255)
     }
 
-    // An RGB base has no alpha to blend
+    /// An RGB base has no alpha to blend
     @Test
     func blendWithRGBBase() {
         var base = STBImage(width: 1, height: 1, channels: 3, data: [100, 100, 100])

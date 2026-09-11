@@ -1,3 +1,4 @@
+#if EnableWebP
 import Foundation
 @testable import STBImage
 import Testing
@@ -404,3 +405,4 @@ struct WebPTests {
     }
 
 }
+#endif

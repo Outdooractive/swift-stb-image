@@ -62,7 +62,7 @@ public struct STBImage {
         height: Int,
         value: UInt8
     ) {
-        let data = [UInt8](repeating: value, count: width*height*RGBA.channels)
+        let data = [UInt8](repeating: value, count: width * height * RGBA.channels)
         self.init(width: width, height: height, channels: RGBA.channels, data: data)
     }
 
@@ -97,16 +97,19 @@ public struct STBImage {
 
     /// Creates an image from raw image data.
     ///
-    /// - Parameter imageData: The raw image data, requires `bpp` 3 or 4.
-    ///   Returns `nil` for grayscale (1) and gray+alpha (2) images, or use
+    /// - Parameter imageData: The raw image data, requires 8-bit samples
+    ///   with 3 or 4 channels. Returns `nil` for grayscale (1), gray+alpha
+    ///   (2) and 16-bit images, or use
     ///   ``STBImage/init?(data:desiredChannels:)`` to convert them.
     public init?(imageData: STBImageData) {
-        guard imageData.bpp == 3 || imageData.bpp == 4 else { return nil }
+        guard imageData.bitDepth == .eight,
+              imageData.channels == 3 || imageData.channels == 4
+        else { return nil }
 
         self.init(
             width: imageData.width,
             height: imageData.height,
-            channels: imageData.bpp,
+            channels: imageData.channels,
             data: imageData.data)
     }
 
@@ -172,10 +175,10 @@ public struct STBImage {
         self.init(imageData: imageData)
     }
 
-    /// The image as raw image data, with the channel count as `bpp`.
+    /// The image as raw image data, with the channel count as `channels`.
     @inlinable
     public var imageData: STBImageData {
-        STBImageData(width: width, height: height, bpp: channels, data: data)
+        STBImageData(width: width, height: height, channels: channels, data: data)
     }
 
     /// Encodes the image.
@@ -351,7 +354,7 @@ extension STBImage: Equatable {
 
     /// Compares dimensions, channel count and all pixel values.
     @inlinable
-    public static func ==(lhs: STBImage, rhs: STBImage) -> Bool {
+    public static func == (lhs: STBImage, rhs: STBImage) -> Bool {
         guard lhs.width == rhs.width,
               lhs.height == rhs.height,
               lhs.channels == rhs.channels
@@ -407,7 +410,7 @@ extension STBImage {
         precondition(yRange.startIndex >= 0 && yRange.endIndex <= height, "yRange out of range.")
 
         var rowStart = dataIndex(x: xRange.startIndex, y: yRange.startIndex)
-        let rowSize = self.width * channels
+        let rowSize = width * channels
 
         data.withUnsafeMutableBufferPointer { bp in
             for y in yRange {
@@ -461,7 +464,7 @@ extension STBImage {
     /// All images must match the dimensions of the image.
     /// Pixel values are assumed to be in range [0, 255].
     public mutating func blendWith(images: [STBImage]) {
-        guard !images.isEmpty else { return }
+        guard images.isEmpty == false else { return }
 
         for other in images {
             precondition(other.width == width && other.height == height, "Image dimensions do not match.")
@@ -486,7 +489,7 @@ extension STBImage {
         xRange: Range<Int>,
         yRange: Range<Int>
     ) {
-        guard !images.isEmpty, !xRange.isEmpty, !yRange.isEmpty else { return }
+        guard images.isEmpty == false, xRange.isEmpty == false, yRange.isEmpty == false else { return }
 
         let selfHasAlpha = hasAlpha
         let alphaIndex = RGBA.alphaIndex
@@ -502,7 +505,7 @@ extension STBImage {
                 let imageY = ref.y - offset.y
                 let otherIndex = (imageY * other.width + imageX) * other.channels
 
-                if !other.hasAlpha {
+                if other.hasAlpha == false {
                     // Opaque other pixel overwrites self completely
                     ref[0] = other.data[otherIndex]
                     ref[1] = other.data[otherIndex + 1]

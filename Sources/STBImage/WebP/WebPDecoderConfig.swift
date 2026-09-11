@@ -1,5 +1,6 @@
-import Foundation
+#if EnableWebP
 import CWebP
+import Foundation
 
 /// The libwebp decoder configuration, mapping `CWebP.WebPDecoderConfig`.
 public struct WebPDecoderConfig: InternalRawRepresentable {
@@ -27,9 +28,9 @@ public struct WebPDecoderConfig: InternalRawRepresentable {
     }
 
     init(rawValue: CWebP.WebPDecoderConfig) {
-        input = WebPBitstreamFeatures(rawValue: rawValue.input)
-        output = WebPDecBuffer(rawValue: rawValue.output)
-        options = WebPDecoderOptions(rawValue: rawValue.options)
+        self.input = WebPBitstreamFeatures(rawValue: rawValue.input)
+        self.output = WebPDecBuffer(rawValue: rawValue.output)
+        self.options = WebPDecoderOptions(rawValue: rawValue.options)
     }
 
     var rawValue: CWebP.WebPDecoderConfig {
@@ -39,8 +40,7 @@ public struct WebPDecoderConfig: InternalRawRepresentable {
             has_alpha: 0,
             has_animation: 0,
             format: 0,
-            pad: (0, 0, 0, 0, 0)
-        )
+            pad: (0, 0, 0, 0, 0))
         return CWebP.WebPDecoderConfig(input: inputValue, output: output.rawValue, options: options.rawValue)
     }
 
@@ -52,12 +52,14 @@ public struct WebPBitstreamFeatures: InternalRawRepresentable, Sendable {
 
     /// The compression format of the bitstream.
     public enum Format: Int, Sendable {
+
         /// Undefined or mixed.
         case undefined = 0
         /// Lossy compression (VP8).
         case lossy
         /// Lossless compression (VP8L).
         case lossless
+
     }
 
     /// Width in pixels, as read from the bitstream.
@@ -88,20 +90,20 @@ public struct WebPBitstreamFeatures: InternalRawRepresentable, Sendable {
             has_alpha: Int32(has_alpha),
             has_animation: Int32(has_animation),
             format: Int32(format.rawValue),
-            pad: (UInt32(pad.0), UInt32(pad.1), UInt32(pad.2), UInt32(pad.3), UInt32(pad.4))
-        )
+            pad: (UInt32(pad.0), UInt32(pad.1), UInt32(pad.2), UInt32(pad.3), UInt32(pad.4)))
     }
 
     init(rawValue: CWebP.WebPBitstreamFeatures) {
-        width = Int(rawValue.width)
-        height = Int(rawValue.height)
-        hasAlpha = rawValue.has_alpha != 0
-        hasAnimation = rawValue.has_animation != 0
+        self.width = Int(rawValue.width)
+        self.height = Int(rawValue.height)
+        self.hasAlpha = rawValue.has_alpha != 0
+        self.hasAnimation = rawValue.has_animation != 0
         guard let format = Format(rawValue: Int(rawValue.format)) else {
             preconditionFailure("Unexpected WebP bitstream format value: \(rawValue.format)")
         }
+
         self.format = format
-        pad = (Int(rawValue.pad.0), Int(rawValue.pad.1), Int(rawValue.pad.2), Int(rawValue.pad.3), Int(rawValue.pad.4))
+        self.pad = (Int(rawValue.pad.0), Int(rawValue.pad.1), Int(rawValue.pad.2), Int(rawValue.pad.3), Int(rawValue.pad.4))
     }
 
 }
@@ -135,7 +137,7 @@ public enum ColorspaceMode: Int, Sendable {
     /// Packed RGB565, 2 bytes per pixel.
     case RGB565 = 6
 
-    // RGB-premultiplied transparent modes (alpha value is preserved)
+    /// RGB-premultiplied transparent modes (alpha value is preserved)
     /// Premultiplied RGBA, 4 bytes per pixel.
     case rgbA = 7
     /// Premultiplied BGRA, 4 bytes per pixel.
@@ -145,7 +147,7 @@ public enum ColorspaceMode: Int, Sendable {
     /// Premultiplied packed RGBA4444, 2 bytes per pixel.
     case rgbA4444 = 10
 
-    // YUV modes must come after RGB ones.
+    /// YUV modes must come after RGB ones.
     /// YUV.
     case YUV = 11
     /// YUVA.
@@ -262,12 +264,13 @@ public struct WebPDecBuffer: InternalRawRepresentable {
     var privateMemory: UnsafeMutablePointer<UInt8>?
 
     var rawValue: CWebP.WebPDecBuffer {
-        let originU = switch u {
-        case let .RGBA(buffer):
-            CWebP.WebPDecBuffer.__Unnamed_union_u(RGBA: buffer)
-        case let .YUVA(buffer):
-            CWebP.WebPDecBuffer.__Unnamed_union_u(YUVA: buffer)
-        }
+        let originU =
+            switch u {
+            case let .RGBA(buffer):
+                CWebP.WebPDecBuffer.__Unnamed_union_u(RGBA: buffer)
+            case let .YUVA(buffer):
+                CWebP.WebPDecBuffer.__Unnamed_union_u(YUVA: buffer)
+            }
         // let u = colorspace.isRGBMode ? libwebp.WebPDecBuffer.__Unnamed_union_u(RGBA: u.RGBA) :
         // libwebp.WebPDecBuffer.__Unnamed_union_u(YUVA: u.YUVA)
         return CWebP.WebPDecBuffer(
@@ -277,22 +280,23 @@ public struct WebPDecBuffer: InternalRawRepresentable {
             is_external_memory: externalMemoryMode.libwebpValue,
             u: originU,
             pad: (UInt32(pad.0), UInt32(pad.1), UInt32(pad.2), UInt32(pad.3)),
-            private_memory: privateMemory
-        )
+            private_memory: privateMemory)
     }
 
     init(rawValue: CWebP.WebPDecBuffer) {
         guard let colorspace = ColorspaceMode(rawValue: Int(rawValue.colorspace.rawValue)) else {
             preconditionFailure("Unexpected WebP colorspace value: \(rawValue.colorspace.rawValue)")
         }
+
         self.colorspace = colorspace
-        width = Int(rawValue.width)
-        height = Int(rawValue.height)
-        externalMemoryMode = ExternalMemoryMode(libwebpValue: rawValue.is_external_memory)
-        u = colorspace.isRGBMode ? Colorspace.RGBA(rawValue.u.RGBA) : Colorspace.YUVA(rawValue.u.YUVA)
-        pad = (Int(rawValue.pad.0), Int(rawValue.pad.1), Int(rawValue.pad.2), Int(rawValue.pad.3))
-        privateMemory = rawValue.private_memory
+        self.width = Int(rawValue.width)
+        self.height = Int(rawValue.height)
+        self.externalMemoryMode = ExternalMemoryMode(libwebpValue: rawValue.is_external_memory)
+        self.u = colorspace.isRGBMode ? Colorspace.RGBA(rawValue.u.RGBA) : Colorspace.YUVA(rawValue.u.YUVA)
+        self.pad = (Int(rawValue.pad.0), Int(rawValue.pad.1), Int(rawValue.pad.2), Int(rawValue.pad.3))
+        self.privateMemory = rawValue.private_memory
     }
+
 }
 
 /// The libwebp decoding options, mapping `CWebP.WebPDecoderOptions`.
@@ -365,46 +369,46 @@ public struct WebPDecoderOptions: InternalRawRepresentable, Sendable {
             dithering_strength: Int32(ditheringStrength),
             flip: Int32(flip),
             alpha_dithering_strength: Int32(alphaDitheringStrength),
-            pad: (UInt32(pad.0), UInt32(pad.1), UInt32(pad.2), UInt32(pad.3), UInt32(pad.4))
-        )
+            pad: (UInt32(pad.0), UInt32(pad.1), UInt32(pad.2), UInt32(pad.3), UInt32(pad.4)))
     }
 
     init(rawValue: CWebP.WebPDecoderOptions) {
-        bypassFiltering = Int(rawValue.bypass_filtering)
-        noFancyUpsampling = Int(rawValue.no_fancy_upsampling)
-        useCropping = rawValue.use_cropping != 0
-        cropLeft = Int(rawValue.crop_left)
-        cropTop = Int(rawValue.crop_top)
-        cropWidth = Int(rawValue.crop_width)
-        cropHeight = Int(rawValue.crop_height)
-        useScaling = rawValue.use_scaling != 0
-        scaledWidth = Int(rawValue.scaled_width)
-        scaledHeight = Int(rawValue.scaled_height)
-        useThreads = rawValue.use_threads != 0
-        ditheringStrength = Int(rawValue.dithering_strength)
-        flip = Int(rawValue.flip)
-        alphaDitheringStrength = Int(rawValue.alpha_dithering_strength)
-        pad = (Int(rawValue.pad.0), Int(rawValue.pad.1), Int(rawValue.pad.2), Int(rawValue.pad.3), Int(rawValue.pad.4))
+        self.bypassFiltering = Int(rawValue.bypass_filtering)
+        self.noFancyUpsampling = Int(rawValue.no_fancy_upsampling)
+        self.useCropping = rawValue.use_cropping != 0
+        self.cropLeft = Int(rawValue.crop_left)
+        self.cropTop = Int(rawValue.crop_top)
+        self.cropWidth = Int(rawValue.crop_width)
+        self.cropHeight = Int(rawValue.crop_height)
+        self.useScaling = rawValue.use_scaling != 0
+        self.scaledWidth = Int(rawValue.scaled_width)
+        self.scaledHeight = Int(rawValue.scaled_height)
+        self.useThreads = rawValue.use_threads != 0
+        self.ditheringStrength = Int(rawValue.dithering_strength)
+        self.flip = Int(rawValue.flip)
+        self.alphaDitheringStrength = Int(rawValue.alpha_dithering_strength)
+        self.pad = (Int(rawValue.pad.0), Int(rawValue.pad.1), Int(rawValue.pad.2), Int(rawValue.pad.3), Int(rawValue.pad.4))
     }
 
     /// Creates options with libwebp's defaults (no filtering bypass,
     /// no cropping, no scaling, no threads, no dithering, no flip).
     public init() {
-        bypassFiltering = 0
-        noFancyUpsampling = 0
-        useCropping = false
-        cropLeft = 0
-        cropTop = 0
-        cropWidth = 0
-        cropHeight = 0
-        useScaling = false
-        scaledWidth = 0
-        scaledHeight = 0
-        useThreads = false
-        ditheringStrength = 0
-        flip = 0
-        alphaDitheringStrength = 0
-        pad = (0, 0, 0, 0, 0)
+        self.bypassFiltering = 0
+        self.noFancyUpsampling = 0
+        self.useCropping = false
+        self.cropLeft = 0
+        self.cropTop = 0
+        self.cropWidth = 0
+        self.cropHeight = 0
+        self.useScaling = false
+        self.scaledWidth = 0
+        self.scaledHeight = 0
+        self.useThreads = false
+        self.ditheringStrength = 0
+        self.flip = 0
+        self.alphaDitheringStrength = 0
+        self.pad = (0, 0, 0, 0, 0)
     }
 
 }
+#endif

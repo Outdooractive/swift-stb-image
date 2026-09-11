@@ -1,5 +1,6 @@
-import Foundation
+#if EnableWebP
 import CWebP
+import Foundation
 
 /// Inspects WebP bitstreams without decoding them.
 public enum WebPImageInspector {
@@ -30,6 +31,7 @@ public enum WebPImageInspector {
             guard let basePointer = rawPtr.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
                 throw WebPError.unexpectedPointerError
             }
+
             return WebPGetFeatures(basePointer, webPData.count, cFeature)
         }
 
@@ -41,3 +43,4 @@ public enum WebPImageInspector {
     }
 
 }
+#endif
